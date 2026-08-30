@@ -3,45 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業路徑製作器 (二十四邊形深度鋸齒版)</title>
+    <title>專業路徑製作器</title>
     <!-- 引入 Leaflet 地圖套件 CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f5f7fa; color: #333; }
+        /* 淺青藍色漸層流動背景 */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #80deea 100%);
+            background-attachment: fixed;
+            color: #2c3e50; 
+        }
+        
         .container { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; height: 90vh; }
-        .panel { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow-y: auto; }
+        
+        /* 毛玻璃半透明面板 */
+        .panel { 
+            background: rgba(255, 255, 255, 0.55); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+        }
         .left-panel { flex: 1; min-width: 420px; }
         .right-panel { flex: 2; display: flex; flex-direction: column; }
-        #map { flex: 1; border-radius: 8px; border: 1px solid #ccc; background: #e5e3df; min-height: 400px; }
-        textarea { width: 100%; min-height: 150px; resize: vertical; margin-bottom: 10px; padding: 10px; box-sizing: border-box; font-family: monospace; }
-        input[type="number"], input[type="text"], select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        #map { flex: 1; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.8); background: #e5e3df; min-height: 400px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
+        
+        textarea { 
+            width: 100%; min-height: 150px; resize: vertical; margin-bottom: 10px; padding: 12px; 
+            box-sizing: border-box; font-family: monospace; 
+            border: 1px solid rgba(255,255,255,0.8); border-radius: 6px; 
+            background: rgba(255,255,255,0.7); 
+        }
+        input[type="number"], input[type="text"], select { 
+            padding: 8px; border: 1px solid rgba(255,255,255,0.8); border-radius: 6px; box-sizing: border-box; 
+            background: rgba(255,255,255,0.7);
+        }
         input[type="number"], input[type="text"] { width: 100%; }
+        
         .row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
         .row > div { flex: 1; }
-        button { background-color: #4CAF50; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: background 0.2s; }
-        button:hover { background-color: #45a049; }
-        .btn-secondary { background-color: #2196F3; }
-        .btn-secondary:hover { background-color: #1976D2; }
-        .btn-danger { background-color: #f44336; }
-        .btn-danger:hover { background-color: #da190b; }
-        .btn-warning { background-color: #ff9800; color: #fff; }
-        .btn-warning:hover { background-color: #e68a00; }
-        .btn-purple { background-color: #9c27b0; }
-        .btn-purple:hover { background-color: #7b1fa2; }
-        .settings-box { border: 1px solid #ddd; padding: 15px; border-radius: 6px; background-color: #fafafa; margin-bottom: 15px; }
-        .info-bar { display: flex; gap: 20px; background: #333; color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .info-bar div { font-size: 1.1em; }
-        .info-bar span { font-weight: bold; color: #4CAF50; }
         
-        /* 半徑與模式設定，維持單行排列 */
+        button { 
+            background-color: #4CAF50; color: white; border: none; padding: 10px 15px; 
+            cursor: pointer; border-radius: 6px; font-weight: bold; 
+            transition: all 0.2s ease; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0,0,0,0.15); }
+        button:active { transform: translateY(0); }
+        
+        .btn-primary { background-color: #009688; }
+        .btn-primary:hover { background-color: #00796b; }
+        .btn-secondary { background-color: #0288d1; }
+        .btn-secondary:hover { background-color: #0277bd; }
+        .btn-danger { background-color: #e53935; }
+        .btn-danger:hover { background-color: #d32f2f; }
+        .btn-warning { background-color: #f57c00; color: #fff; }
+        .btn-warning:hover { background-color: #e65100; }
+        .btn-purple { background-color: #8e24aa; }
+        .btn-purple:hover { background-color: #7b1fa2; }
+        
+        /* 內層設定區塊也是半透明 */
+        .settings-box { 
+            border: 1px solid rgba(255, 255, 255, 0.7); 
+            padding: 15px; border-radius: 8px; 
+            background: rgba(255, 255, 255, 0.4); 
+            margin-bottom: 15px; 
+        }
+        
+        /* 資訊列質感深色半透明 */
+        .info-bar { 
+            display: flex; gap: 20px; 
+            background: rgba(0, 96, 100, 0.85); 
+            backdrop-filter: blur(5px);
+            color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; flex-wrap: wrap; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .info-bar div { font-size: 1.1em; }
+        .info-bar span { font-weight: bold; color: #80cbc4; }
+        
         .radius-inputs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .radius-row { display: flex; align-items: center; gap: 10px; }
-        .radius-row label { width: 55px; font-weight: bold; flex-shrink: 0; }
+        .radius-row label { width: 55px; font-weight: bold; flex-shrink: 0; color: #34495e; }
         .radius-row input[type="number"] { width: 80px; flex-shrink: 0; }
         .radius-row select { flex: 1; }
         
-        hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
-        .action-buttons { display: flex; flex-direction: column; gap: 10px; }
+        hr { border: 0; border-top: 1px solid rgba(0, 0, 0, 0.1); margin: 15px 0; }
+        
+        h2 { color: #006064; margin-top: 0; margin-bottom: 20px; font-weight: 800; text-shadow: 1px 1px 2px rgba(255,255,255,0.5); }
+        label b { color: #00838f; }
     </style>
 </head>
 <body>
@@ -51,17 +110,22 @@
     <div class="panel left-panel">
         <h2>路徑製作器</h2>
         
-        <label><b>1. 座標輸入 (可手動貼上或匯入 GPX)</b></label>
-        <textarea id="coord-input" placeholder="貼上座標，一行一組 (緯度, 經度)&#10;例如:&#10;25.0339, 121.5645&#10;25.0478, 121.5318"></textarea>
-        <div class="row">
-            <div>
+        <div class="settings-box">
+            <label><b>1. 座標輸入</b></label>
+            <textarea id="coord-input" placeholder="貼上座標，一行一組 (緯度, 經度)&#10;例如:&#10;25.0339, 121.5645&#10;25.0478, 121.5318"></textarea>
+            
+            <!-- 第一行上傳，第二行併排按鈕 -->
+            <div style="margin-bottom: 10px;">
                 <input type="file" id="gpx-file" accept=".gpx" style="font-size: 0.9em;">
             </div>
-            <button class="btn-danger" onclick="clearAll()">清除座標</button>
+            <div class="row">
+                <button class="btn-secondary" onclick="loadCoordinates()">載入座標</button>
+                <button class="btn-danger" onclick="clearAll()">清除座標</button>
+            </div>
         </div>
 
         <div class="settings-box">
-            <label><b>2. 全域繞圈與速度設定</b></label>
+            <label><b>2. 路徑資料設定</b></label>
             <div class="row" style="margin-top: 10px;">
                 <div>
                     <label>總繞圈數:</label>
@@ -87,16 +151,16 @@
             </div>
             <div class="row">
                 <button class="btn-warning" onclick="analyzeFirstCoordinate()">🔍 判斷座標生成檔名</button>
-                <button class="btn-secondary" id="apply-filename-btn" style="display:none;" onclick="applyGeneratedFilename()">套用檔名</button>
+                <button class="btn-primary" id="apply-filename-btn" style="display:none;" onclick="applyGeneratedFilename()">套用檔名</button>
             </div>
-            <div id="geo-preview" style="font-size: 0.85em; color: #555; margin-top: 5px;"></div>
+            <div id="geo-preview" style="font-size: 0.85em; color: #006064; margin-top: 5px; font-weight: bold;"></div>
         </div>
 
         <hr>
-        <div class="action-buttons">
-            <button class="btn-secondary" onclick="loadCoordinates()" style="font-size: 1.1em; padding: 12px;">1️⃣ 載入座標 (顯示原始路徑)</button>
-            <button class="btn-purple" onclick="optimizeRoute()" style="font-size: 1.1em; padding: 12px;">2️⃣ 最佳化路徑 (重新排序點位)</button>
-            <button onclick="downloadGPX()" style="margin-top: 10px; font-size: 1.1em; padding: 15px;">💾 下載 GPX 檔案 (WPT 格式)</button>
+        <!-- 下方按鈕併排，最佳化空間 -->
+        <div class="row">
+            <button class="btn-purple" onclick="optimizeRoute()" style="font-size: 1.1em; padding: 12px;">最佳化路徑</button>
+            <button class="btn-primary" onclick="downloadGPX()" style="font-size: 1.1em; padding: 12px;">下載GPX檔案</button>
         </div>
     </div>
 
@@ -123,18 +187,6 @@
     let originalImportedFilename = ""; 
     let currentBaseCoords = []; 
 
-    // 保留繁中字典作為首要防線，涵蓋主要國家
-    const countryZhTwMap = {
-        'tw': '台灣', 'jp': '日本', 'cn': '中國', 'hk': '香港', 'mo': '澳門',
-        'kr': '韓國', 'kp': '北韓', 'us': '美國', 'ca': '加拿大', 'uk': '英國',
-        'gb': '英國', 'fr': '法國', 'de': '德國', 'it': '義大利', 'es': '西班牙',
-        'ru': '俄羅斯', 'au': '澳洲', 'nz': '紐西蘭', 'sg': '新加坡', 'my': '馬來西亞',
-        'th': '泰國', 'vn': '越南', 'ph': '菲律賓', 'id': '印尼', 'in': '印度',
-        'pe': '秘魯', 'br': '巴西', 'ar': '阿根廷', 'cl': '智利', 'mx': '墨西哥',
-        'za': '南非', 'eg': '埃及', 'tr': '土耳其', 'sa': '沙烏地阿拉伯', 'ae': '阿聯',
-        'pl': '波蘭', 'nl': '荷蘭', 'se': '瑞典', 'ch': '瑞士', 'gr': '希臘'
-    };
-
     window.onload = function() {
         map = L.map('map').setView([25.0339, 121.5645], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -157,7 +209,7 @@
         for (let i = 1; i <= laps; i++) {
             const div = document.createElement('div');
             div.className = 'radius-row';
-            const rVal = oldRadii[i-1] || '35.0';
+            const rVal = oldRadii[i-1] || '33.0'; // 預設值 33
             const mVal = oldModes[i-1] || 'oct';
             
             div.innerHTML = `
@@ -243,22 +295,31 @@
         document.getElementById('apply-filename-btn').style.display = 'none';
 
         try {
-            // 加上 &accept-language=zh-TW 參數，雙重確保獲取繁體中文
-            const resZh = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${first.lat}&lon=${first.lon}&zoom=10&addressdetails=1&accept-language=zh-TW`);
-            const dataZh = await resZh.json();
-            let countryCode = dataZh.address?.country_code?.toLowerCase();
-            // 優先使用字典對照表，若字典沒涵蓋到，使用 API 的 zh-TW 回傳值
-            let country = countryZhTwMap[countryCode] || dataZh.address?.country || '未知國家';
+            // 一次請求獲取英文版的地址資料 (穩定且不易被 API 阻擋)
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${first.lat}&lon=${first.lon}&zoom=10&addressdetails=1&accept-language=en`);
+            const data = await res.json();
+            
+            let countryCode = data.address?.country_code?.toUpperCase();
+            let country = '未知國家';
+            
+            if (countryCode) {
+                try {
+                    // 終極解法：使用瀏覽器內建 API 強制將國家代碼翻譯為繁體中文
+                    const regionNamesInZhHant = new Intl.DisplayNames(['zh-Hant-TW'], { type: 'region' });
+                    country = regionNamesInZhHant.of(countryCode);
+                } catch(e) {
+                    country = data.address?.country || '未知國家';
+                }
+            }
+            
+            const city = data.address?.city || data.address?.town || data.address?.county || data.address?.state || 'UnknownCity';
 
-            const resEn = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${first.lat}&lon=${first.lon}&zoom=10&addressdetails=1&accept-language=en`);
-            const dataEn = await resEn.json();
-            const city = dataEn.address?.city || dataEn.address?.town || dataEn.address?.county || dataEn.address?.state || 'UnknownCity';
-
+            // 請求時區資料
             const resTz = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${first.lat}&longitude=${first.lon}&current_weather=true&timezone=auto`);
             const dataTz = await resTz.json();
+            
             let timeDiffStr = "+0";
             if (dataTz.utc_offset_seconds !== undefined) {
-                // 時差計算邏輯：台灣時區(8) - 當地時區
                 const taiwanOffsetHours = 8; 
                 const localOffsetHours = dataTz.utc_offset_seconds / 3600;
                 const diffHours = taiwanOffsetHours - localOffsetHours;
@@ -266,7 +327,7 @@
                 if (diffHours > 0) {
                     timeDiffStr = `+${diffHours}`;
                 } else if (diffHours < 0) {
-                    timeDiffStr = `${diffHours}`; // 原本就是負數，自帶負號
+                    timeDiffStr = `${diffHours}`; 
                 } else {
                     timeDiffStr = "+0";
                 }
@@ -279,7 +340,7 @@
             document.getElementById('apply-filename-btn').style.display = 'inline-block';
         } catch (error) {
             console.error(error);
-            preview.innerText = "❌ 查詢失敗。";
+            preview.innerText = "❌ 查詢失敗，請檢查網路狀態。";
         }
     }
 
@@ -368,7 +429,6 @@
         drawRoute();
     }
 
-    // 核心繪製邏輯
     function drawRoute() {
         if (currentBaseCoords.length === 0) return;
         document.getElementById('info-count').innerText = currentBaseCoords.length;
@@ -391,7 +451,7 @@
             let entryAngleDeg = 0; 
             
             let mode1 = document.getElementById('mode-1') ? document.getElementById('mode-1').value : 'oct';
-            let r1 = document.getElementById('radius-1') ? (parseFloat(document.getElementById('radius-1').value) || 35.0) : 35.0;
+            let r1 = document.getElementById('radius-1') ? (parseFloat(document.getElementById('radius-1').value) || 33.0) : 33.0;
 
             if (currentPos) {
                 let minDist = Infinity;
@@ -404,7 +464,6 @@
                 }
 
                 possibleAngles.forEach(ang => {
-                    // 若為鋸齒模式，使用 +2m 外圈半徑來尋找最近切入點
                     let actualR = (mode1 === 'oct') ? (r1 / Math.cos(22.5 * Math.PI / 180)) : (r1 + 2);
                     let v = getVertex(center.lat, center.lon, actualR, ang);
                     let d = getDistance(currentPos.lat, currentPos.lon, v.lat, v.lon);
@@ -417,10 +476,9 @@
 
             for (let lap = 1; lap <= laps; lap++) {
                 let mode = document.getElementById(`mode-${lap}`).value;
-                let baseR = parseFloat(document.getElementById(`radius-${lap}`).value) || 35.0;
+                let baseR = parseFloat(document.getElementById(`radius-${lap}`).value) || 33.0;
 
                 if (mode === 'oct') {
-                    // 正八邊形 (圓外切)
                     let actualR = baseR / Math.cos(22.5 * Math.PI / 180);
                     for (let step = 0; step <= 8; step++) {
                         let ang = entryAngleDeg + step * 45;
@@ -429,28 +487,22 @@
                         currentPos = v;
                     }
                 } else {
-                    // 二十四邊形對稱鋸齒 (自動外圈+2m, 內圈-8m)
                     let outerR = baseR + 2;
                     let innerR = Math.max(1, baseR - 8); 
                     
-                    // 執行基本的一圈 (24組 外-內)
                     for (let step = 0; step < 24; step++) {
-                        // 外點
                         let angOut = entryAngleDeg + step * 15;
                         let vOut = getVertex(center.lat, center.lon, outerR, angOut);
                         finalWptPath.push(vOut);
                         currentPos = vOut;
 
-                        // 內點
                         let angIn = angOut + 7.5;
                         let vIn = getVertex(center.lat, center.lon, innerR, angIn);
                         finalWptPath.push(vIn);
                         currentPos = vIn;
                     }
 
-                    // 判斷是否為此座標的「最後一圈」
                     if (lap === laps) {
-                        // 最後一圈，多走重疊段 (外1-內1-外2-內2-外3-內3)
                         for (let step = 0; step <= 2; step++) {
                             let angOut = entryAngleDeg + step * 15;
                             let vOut = getVertex(center.lat, center.lon, outerR, angOut);
@@ -461,10 +513,8 @@
                             let vIn = getVertex(center.lat, center.lon, innerR, angIn);
                             finalWptPath.push(vIn);
                             currentPos = vIn; 
-                            // 最終結束在 內3，並以此位置前往下一個座標
                         }
                     } else {
-                        // 若不是最後一圈，只需補上起點 (外1) 完美閉合，以銜接下一圈
                         let angOut = entryAngleDeg;
                         let vOut = getVertex(center.lat, center.lon, outerR, angOut);
                         finalWptPath.push(vOut);
@@ -476,16 +526,15 @@
 
         recalculateTime();
 
-        // 重新繪圖
         if (pathLayer) map.removeLayer(pathLayer);
         if (markersLayer) map.removeLayer(markersLayer);
 
         let latlngs = finalWptPath.map(p => [p.lat, p.lon]);
-        pathLayer = L.polyline(latlngs, {color: 'red', weight: 1.5}).addTo(map);
+        pathLayer = L.polyline(latlngs, {color: '#e53935', weight: 1.5}).addTo(map);
         
         markersLayer = L.layerGroup();
         finalWptPath.forEach(p => {
-            L.circleMarker([p.lat, p.lon], {radius: 1.5, color: 'blue', fillColor: 'blue', fillOpacity: 1}).addTo(markersLayer);
+            L.circleMarker([p.lat, p.lon], {radius: 1.5, color: '#0288d1', fillColor: '#0288d1', fillOpacity: 1}).addTo(markersLayer);
         });
         markersLayer.addTo(map);
 
