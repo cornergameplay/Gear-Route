@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業路徑製作器 (二十四邊形深度鋸齒版)</title>
+    <!-- 引入 Leaflet 地圖套件 CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f5f7fa; color: #333; }
+        .container { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; height: 90vh; }
+        .panel { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow-y: auto; }
+        .left-panel { flex: 1; min-width: 420px; }
+        .right-panel { flex: 2; display: flex; flex-direction: column; }
+        #map { flex: 1; border-radius: 8px; border: 1px solid #ccc; background: #e5e3df; min-height: 400px; }
+        textarea { width: 100%; min-height: 150px; resize: vertical; margin-bottom: 10px; padding: 10px; box-sizing: border-box; font-family: monospace; }
+        input[type="number"], input[type="text"], select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type="number"], input[type="text"] { width: 100%; }
+        .row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+        .row > div { flex: 1; }
+        button { background-color: #4CAF50; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: background 0.2s; }
+        button:hover { background-color: #45a049; }
+        .btn-secondary { background-color: #2196F3; }
+        .btn-secondary:hover { background-color: #1976D2; }
+        .btn-danger { background-color: #f44336; }
+        .btn-danger:hover { background-color: #da190b; }
+        .btn-warning { background-color: #ff9800; color: #fff; }
+        .btn-warning:hover { background-color: #e68a00; }
+        .btn-purple { background-color: #9c27b0; }
+        .btn-purple:hover { background-color: #7b1fa2; }
+        .settings-box { border: 1px solid #ddd; padding: 15px; border-radius: 6px; background-color: #fafafa; margin-bottom: 15px; }
+        .info-bar { display: flex; gap: 20px; background: #333; color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .info-bar div { font-size: 1.1em; }
+        .info-bar span { font-weight: bold; color: #4CAF50; }
+        
+        /* 半徑與模式設定，維持單行排列 */
+        .radius-inputs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .radius-row { display: flex; align-items: center; gap: 10px; }
+        .radius-row label { width: 55px; font-weight: bold; flex-shrink: 0; }
+        .radius-row input[type="number"] { width: 80px; flex-shrink: 0; }
+        .radius-row select { flex: 1; }
+        
+        hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+        .action-buttons { display: flex; flex-direction: column; gap: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 左側控制面板 -->
+    <div class="panel left-panel">
+        <h2>路徑製作器</h2>
+        
+        <label><b>1. 座標輸入 (可手動貼上或匯入 GPX)</b></label>
+        <textarea id="coord-input" placeholder="貼上座標，一行一組 (緯度, 經度)&#10;例如:&#10;25.0339, 121.5645&#10;25.0478, 121.5318"></textarea>
+        <div class="row">
+            <div>
+                <input type="file" id="gpx-file" accept=".gpx" style="font-size: 0.9em;">
+            </div>
+            <button class="btn-danger" onclick="clearAll()">清除座標</button>
+        </div>
+
+        <div class="settings-box">
+            <label><b>2. 全域繞圈與速度設定</b></label>
+            <div class="row" style="margin-top: 10px;">
+                <div>
+                    <label>總繞圈數:</label>
+                    <input type="number" id="laps-input" value="1" min="1" max="20" onchange="generateRadiusInputs()">
+                </div>
+                <div>
+                    <label>時速 (Km/h):</label>
+                    <input type="number" id="speed-input" value="5.0" step="0.1" min="0.1" onchange="recalculateTime()">
+                </div>
+            </div>
+            <label>各圈半徑與繞行模式設定:</label>
+            <div id="radius-container" class="radius-inputs">
+                <!-- Javascript 動態生成單行排列的輸入框與選單 -->
+            </div>
+        </div>
+
+        <div class="settings-box">
+            <label><b>3. 檔名與地理位置</b></label>
+            <div class="row" style="margin-top: 10px;">
+                <div style="flex: 2;">
+                    <input type="text" id="filename-input" placeholder="檔案名稱 (將作為 GPX 下載檔名)">
+                </div>
+            </div>
+            <div class="row">
+                <button class="btn-warning" onclick="analyzeFirstCoordinate()">🔍 判斷座標生成檔名</button>
+                <button class="btn-secondary" id="apply-filename-btn" style="display:none;" onclick="applyGeneratedFilename()">套用檔名</button>
+            </div>
+            <div id="geo-preview" style="font-size: 0.85em; color: #555; margin-top: 5px;"></div>
+        </div>
+
+        <hr>
+        <div class="action-buttons">
+            <button class="btn-secondary" onclick="loadCoordinates()" style="font-size: 1.1em; padding: 12px;">1️⃣ 載入座標 (顯示原始路徑)</button>
+            <button class="btn-purple" onclick="optimizeRoute()" style="font-size: 1.1em; padding: 12px;">2️⃣ 最佳化路徑 (重新排序點位)</button>
+            <button onclick="downloadGPX()" style="margin-top: 10px; font-size: 1.1em; padding: 15px;">💾 下載 GPX 檔案 (WPT 格式)</button>
+        </div>
+    </div>
+
+    <!-- 右側地圖與資訊面板 -->
+    <div class="panel right-panel">
+        <div class="info-bar">
+            <div>座標總數：<span id="info-count">0</span> 組</div>
+            <div>繞行總點位：<span id="info-wpt-count">0</span> 點</div>
+            <div>總里程：<span id="info-dist">0.00</span> Km</div>
+            <div>預估時間：<span id="info-time">00分00秒</span></div>
+        </div>
+        <div id="map"></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    let map;
+    let pathLayer = null;
+    let markersLayer = null;
+    let finalWptPath = []; 
+    let tempGeneratedFilename = ""; 
+    let originalImportedFilename = ""; 
+    let currentBaseCoords = []; 
+
+    // 保留繁中字典作為首要防線，涵蓋主要國家
+    const countryZhTwMap = {
+        'tw': '台灣', 'jp': '日本', 'cn': '中國', 'hk': '香港', 'mo': '澳門',
+        'kr': '韓國', 'kp': '北韓', 'us': '美國', 'ca': '加拿大', 'uk': '英國',
+        'gb': '英國', 'fr': '法國', 'de': '德國', 'it': '義大利', 'es': '西班牙',
+        'ru': '俄羅斯', 'au': '澳洲', 'nz': '紐西蘭', 'sg': '新加坡', 'my': '馬來西亞',
+        'th': '泰國', 'vn': '越南', 'ph': '菲律賓', 'id': '印尼', 'in': '印度',
+        'pe': '秘魯', 'br': '巴西', 'ar': '阿根廷', 'cl': '智利', 'mx': '墨西哥',
+        'za': '南非', 'eg': '埃及', 'tr': '土耳其', 'sa': '沙烏地阿拉伯', 'ae': '阿聯',
+        'pl': '波蘭', 'nl': '荷蘭', 'se': '瑞典', 'ch': '瑞士', 'gr': '希臘'
+    };
+
+    window.onload = function() {
+        map = L.map('map').setView([25.0339, 121.5645], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        generateRadiusInputs();
+        document.getElementById('gpx-file').addEventListener('change', handleFileUpload);
+    };
+
+    function generateRadiusInputs() {
+        const container = document.getElementById('radius-container');
+        const laps = parseInt(document.getElementById('laps-input').value) || 1;
+        
+        const oldRadii = [];
+        const oldModes = [];
+        container.querySelectorAll('input[type="number"]').forEach(inp => oldRadii.push(inp.value));
+        container.querySelectorAll('select').forEach(sel => oldModes.push(sel.value));
+
+        container.innerHTML = '';
+        for (let i = 1; i <= laps; i++) {
+            const div = document.createElement('div');
+            div.className = 'radius-row';
+            const rVal = oldRadii[i-1] || '35.0';
+            const mVal = oldModes[i-1] || 'oct';
+            
+            div.innerHTML = `
+                <label>第 ${i} 圈:</label> 
+                <input type="number" id="radius-${i}" value="${rVal}" step="0.1" min="6" onchange="if(currentBaseCoords.length>0) drawRoute()">
+                <select id="mode-${i}" onchange="if(currentBaseCoords.length>0) drawRoute()">
+                    <option value="oct" ${mVal === 'oct' ? 'selected' : ''}>正八邊形模式</option>
+                    <option value="zig" ${mVal === 'zig' ? 'selected' : ''}>二十四邊形鋸齒模式</option>
+                </select>
+            `;
+            container.appendChild(div);
+        }
+        if (currentBaseCoords.length > 0) drawRoute(); 
+    }
+
+    function clearAll() {
+        document.getElementById('coord-input').value = '';
+        document.getElementById('gpx-file').value = '';
+        document.getElementById('filename-input').value = '';
+        document.getElementById('geo-preview').innerText = '';
+        document.getElementById('apply-filename-btn').style.display = 'none';
+        document.getElementById('info-count').innerText = '0';
+        document.getElementById('info-wpt-count').innerText = '0';
+        document.getElementById('info-dist').innerText = '0.00';
+        document.getElementById('info-time').innerText = '00分00秒';
+        if (pathLayer) map.removeLayer(pathLayer);
+        if (markersLayer) map.removeLayer(markersLayer);
+        finalWptPath = [];
+        currentBaseCoords = [];
+        tempGeneratedFilename = "";
+    }
+
+    function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        originalImportedFilename = file.name.replace(/\.gpx$/i, '');
+        document.getElementById('filename-input').value = originalImportedFilename;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const text = evt.target.result;
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(text, "text/xml");
+            const points = [...xmlDoc.querySelectorAll('wpt, trkpt, rtept')];
+            if (points.length === 0) {
+                alert("在此檔案中找不到任何座標點！");
+                return;
+            }
+            let coordString = points.map(p => `${p.getAttribute('lat')}, ${p.getAttribute('lon')}`).join('\n');
+            document.getElementById('coord-input').value = coordString;
+        };
+        reader.readAsText(file);
+    }
+
+    function parseCoordinates() {
+        const text = document.getElementById('coord-input').value;
+        const lines = text.split('\n');
+        const coords = [];
+        for (const line of lines) {
+            const cleanLine = line.trim();
+            if (!cleanLine) continue;
+            const parts = cleanLine.split(/[\s,]+/);
+            if (parts.length >= 2) {
+                const lat = parseFloat(parts[0]);
+                const lon = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lon)) coords.push({ lat, lon });
+            }
+        }
+        return coords;
+    }
+
+    async function analyzeFirstCoordinate() {
+        const coords = parseCoordinates();
+        if (coords.length === 0) {
+            alert("請先輸入座標！");
+            return;
+        }
+        const first = coords[0];
+        const laps = parseInt(document.getElementById('laps-input').value) || 1;
+        const preview = document.getElementById('geo-preview');
+        
+        preview.innerText = "🔍 正在向地圖伺服器查詢資訊，請稍候...";
+        document.getElementById('apply-filename-btn').style.display = 'none';
+
+        try {
+            // 加上 &accept-language=zh-TW 參數，雙重確保獲取繁體中文
+            const resZh = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${first.lat}&lon=${first.lon}&zoom=10&addressdetails=1&accept-language=zh-TW`);
+            const dataZh = await resZh.json();
+            let countryCode = dataZh.address?.country_code?.toLowerCase();
+            // 優先使用字典對照表，若字典沒涵蓋到，使用 API 的 zh-TW 回傳值
+            let country = countryZhTwMap[countryCode] || dataZh.address?.country || '未知國家';
+
+            const resEn = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${first.lat}&lon=${first.lon}&zoom=10&addressdetails=1&accept-language=en`);
+            const dataEn = await resEn.json();
+            const city = dataEn.address?.city || dataEn.address?.town || dataEn.address?.county || dataEn.address?.state || 'UnknownCity';
+
+            const resTz = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${first.lat}&longitude=${first.lon}&current_weather=true&timezone=auto`);
+            const dataTz = await resTz.json();
+            let timeDiffStr = "+0";
+            if (dataTz.utc_offset_seconds !== undefined) {
+                // 時差計算邏輯：台灣時區(8) - 當地時區
+                const taiwanOffsetHours = 8; 
+                const localOffsetHours = dataTz.utc_offset_seconds / 3600;
+                const diffHours = taiwanOffsetHours - localOffsetHours;
+                
+                if (diffHours > 0) {
+                    timeDiffStr = `+${diffHours}`;
+                } else if (diffHours < 0) {
+                    timeDiffStr = `${diffHours}`; // 原本就是負數，自帶負號
+                } else {
+                    timeDiffStr = "+0";
+                }
+            }
+
+            const cleanCity = city.replace(/\s+/g, '');
+            tempGeneratedFilename = `${country}_${cleanCity}_${timeDiffStr}小時_${coords.length}組_${laps}圈`;
+            
+            preview.innerText = `✅ 建議檔名：${tempGeneratedFilename}`;
+            document.getElementById('apply-filename-btn').style.display = 'inline-block';
+        } catch (error) {
+            console.error(error);
+            preview.innerText = "❌ 查詢失敗。";
+        }
+    }
+
+    function applyGeneratedFilename() {
+        if (tempGeneratedFilename) {
+            document.getElementById('filename-input').value = tempGeneratedFilename;
+        }
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    function loadCoordinates() {
+        const coords = parseCoordinates();
+        if (coords.length === 0) {
+            alert("請輸入有效的座標！");
+            return;
+        }
+        currentBaseCoords = [...coords];
+        drawRoute();
+    }
+
+    function optimizeRoute() {
+        if (currentBaseCoords.length === 0) {
+            alert("請先「載入座標」再進行最佳化！");
+            return;
+        }
+        let coords = [...currentBaseCoords];
+        let routeIndices = [];
+        if (coords.length <= 1) {
+            routeIndices = [0];
+        } else {
+            let unvisited = new Set(Array.from({length: coords.length}, (_, i) => i));
+            let curr = 0; 
+            routeIndices.push(curr);
+            unvisited.delete(curr);
+
+            while(unvisited.size > 0) {
+                let nearest = -1;
+                let minDist = Infinity;
+                for (let j of unvisited) {
+                    let d = getDistance(coords[curr].lat, coords[curr].lon, coords[j].lat, coords[j].lon);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearest = j;
+                    }
+                }
+                curr = nearest;
+                routeIndices.push(curr);
+                unvisited.delete(curr);
+            }
+
+            let improved = true;
+            let maxIterations = 50; 
+            while (improved && maxIterations > 0) {
+                improved = false;
+                maxIterations--;
+                for (let i = 0; i < routeIndices.length - 2; i++) {
+                    for (let j = i + 2; j < routeIndices.length - 1; j++) {
+                        let a = routeIndices[i], b = routeIndices[i+1];
+                        let c = routeIndices[j], d = routeIndices[j+1];
+                        let distOld = getDistance(coords[a].lat, coords[a].lon, coords[b].lat, coords[b].lon) + 
+                                      getDistance(coords[c].lat, coords[c].lon, coords[d].lat, coords[d].lon);
+                        let distNew = getDistance(coords[a].lat, coords[a].lon, coords[c].lat, coords[c].lon) + 
+                                      getDistance(coords[b].lat, coords[b].lon, coords[d].lat, coords[d].lon);
+                        if (distNew < distOld - 0.0001) {
+                            let subArray = routeIndices.slice(i+1, j+1).reverse();
+                            for(let k = 0; k < subArray.length; k++){
+                                routeIndices[i + 1 + k] = subArray[k];
+                            }
+                            improved = true;
+                        }
+                    }
+                }
+            }
+        }
+        currentBaseCoords = routeIndices.map(i => coords[i]);
+        drawRoute();
+    }
+
+    // 核心繪製邏輯
+    function drawRoute() {
+        if (currentBaseCoords.length === 0) return;
+        document.getElementById('info-count').innerText = currentBaseCoords.length;
+
+        const laps = parseInt(document.getElementById('laps-input').value) || 1;
+        finalWptPath = [];
+        
+        function getVertex(centerLat, centerLon, radiusMeters, angleDeg) {
+            const mPerLat = 111320; 
+            const mPerLon = 111320 * Math.cos(centerLat * Math.PI / 180);
+            const rad = angleDeg * Math.PI / 180;
+            const dx = radiusMeters * Math.sin(rad);
+            const dy = radiusMeters * Math.cos(rad);
+            return { lat: centerLat + (dy / mPerLat), lon: centerLon + (dx / mPerLon) };
+        }
+
+        let currentPos = null; 
+
+        currentBaseCoords.forEach((center) => {
+            let entryAngleDeg = 0; 
+            
+            let mode1 = document.getElementById('mode-1') ? document.getElementById('mode-1').value : 'oct';
+            let r1 = document.getElementById('radius-1') ? (parseFloat(document.getElementById('radius-1').value) || 35.0) : 35.0;
+
+            if (currentPos) {
+                let minDist = Infinity;
+                let possibleAngles = [];
+                
+                if (mode1 === 'oct') {
+                    for(let i=0; i<8; i++) possibleAngles.push(i * 45);
+                } else {
+                    for(let i=0; i<24; i++) possibleAngles.push(i * 15);
+                }
+
+                possibleAngles.forEach(ang => {
+                    // 若為鋸齒模式，使用 +2m 外圈半徑來尋找最近切入點
+                    let actualR = (mode1 === 'oct') ? (r1 / Math.cos(22.5 * Math.PI / 180)) : (r1 + 2);
+                    let v = getVertex(center.lat, center.lon, actualR, ang);
+                    let d = getDistance(currentPos.lat, currentPos.lon, v.lat, v.lon);
+                    if (d < minDist) {
+                        minDist = d;
+                        entryAngleDeg = ang;
+                    }
+                });
+            }
+
+            for (let lap = 1; lap <= laps; lap++) {
+                let mode = document.getElementById(`mode-${lap}`).value;
+                let baseR = parseFloat(document.getElementById(`radius-${lap}`).value) || 35.0;
+
+                if (mode === 'oct') {
+                    // 正八邊形 (圓外切)
+                    let actualR = baseR / Math.cos(22.5 * Math.PI / 180);
+                    for (let step = 0; step <= 8; step++) {
+                        let ang = entryAngleDeg + step * 45;
+                        let v = getVertex(center.lat, center.lon, actualR, ang);
+                        finalWptPath.push(v);
+                        currentPos = v;
+                    }
+                } else {
+                    // 二十四邊形對稱鋸齒 (自動外圈+2m, 內圈-8m)
+                    let outerR = baseR + 2;
+                    let innerR = Math.max(1, baseR - 8); 
+                    
+                    // 執行基本的一圈 (24組 外-內)
+                    for (let step = 0; step < 24; step++) {
+                        // 外點
+                        let angOut = entryAngleDeg + step * 15;
+                        let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                        finalWptPath.push(vOut);
+                        currentPos = vOut;
+
+                        // 內點
+                        let angIn = angOut + 7.5;
+                        let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                        finalWptPath.push(vIn);
+                        currentPos = vIn;
+                    }
+
+                    // 判斷是否為此座標的「最後一圈」
+                    if (lap === laps) {
+                        // 最後一圈，多走重疊段 (外1-內1-外2-內2-外3-內3)
+                        for (let step = 0; step <= 2; step++) {
+                            let angOut = entryAngleDeg + step * 15;
+                            let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                            finalWptPath.push(vOut);
+                            currentPos = vOut;
+
+                            let angIn = angOut + 7.5;
+                            let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                            finalWptPath.push(vIn);
+                            currentPos = vIn; 
+                            // 最終結束在 內3，並以此位置前往下一個座標
+                        }
+                    } else {
+                        // 若不是最後一圈，只需補上起點 (外1) 完美閉合，以銜接下一圈
+                        let angOut = entryAngleDeg;
+                        let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                        finalWptPath.push(vOut);
+                        currentPos = vOut;
+                    }
+                }
+            }
+        });
+
+        recalculateTime();
+
+        // 重新繪圖
+        if (pathLayer) map.removeLayer(pathLayer);
+        if (markersLayer) map.removeLayer(markersLayer);
+
+        let latlngs = finalWptPath.map(p => [p.lat, p.lon]);
+        pathLayer = L.polyline(latlngs, {color: 'red', weight: 1.5}).addTo(map);
+        
+        markersLayer = L.layerGroup();
+        finalWptPath.forEach(p => {
+            L.circleMarker([p.lat, p.lon], {radius: 1.5, color: 'blue', fillColor: 'blue', fillOpacity: 1}).addTo(markersLayer);
+        });
+        markersLayer.addTo(map);
+
+        if (latlngs.length > 0) {
+            map.fitBounds(pathLayer.getBounds(), {padding: [30, 30]});
+        }
+    }
+
+    function recalculateTime() {
+        if (finalWptPath.length === 0) return;
+        
+        let totalDistKm = 0;
+        for (let i = 0; i < finalWptPath.length - 1; i++) {
+            totalDistKm += getDistance(finalWptPath[i].lat, finalWptPath[i].lon, finalWptPath[i+1].lat, finalWptPath[i+1].lon);
+        }
+        
+        const speedKmH = parseFloat(document.getElementById('speed-input').value) || 5.0;
+        const timeHours = totalDistKm / speedKmH;
+        const totalMinutes = Math.floor(timeHours * 60);
+        const totalSeconds = Math.round((timeHours * 60 - totalMinutes) * 60);
+
+        document.getElementById('info-wpt-count').innerText = finalWptPath.length;
+        document.getElementById('info-dist').innerText = totalDistKm.toFixed(2);
+        
+        let minStr = totalMinutes.toString().padStart(2, '0');
+        let secStr = totalSeconds.toString().padStart(2, '0');
+        document.getElementById('info-time').innerText = `${minStr}分${secStr}秒`;
+    }
+
+    function downloadGPX() {
+        if (finalWptPath.length === 0) {
+            alert("請先載入座標或最佳化產生路徑！");
+            return;
+        }
+
+        let filename = document.getElementById('filename-input').value.trim();
+        if (!filename) filename = "Route";
+
+        let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+        gpx += `<gpx version="1.1" creator="Professional Route Builder">\n`;
+        
+        finalWptPath.forEach((pt, index) => {
+            gpx += `  <wpt lat="${pt.lat.toFixed(6)}" lon="${pt.lon.toFixed(6)}">\n`;
+            gpx += `    <name>Point_${index+1}</name>\n`;
+            gpx += `  </wpt>\n`;
+        });
+        
+        gpx += `</gpx>`;
+
+        const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.gpx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
