@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業路徑製作器</title>
+    <title>專業路徑製作器 (頂級質感毛玻璃版)</title>
     <!-- 引入 Leaflet 地圖套件 CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -15,15 +15,16 @@
             background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #80deea 100%);
             background-attachment: fixed;
             color: #2c3e50; 
+            overflow-x: hidden;
         }
         
         .container { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; height: 90vh; }
         
         /* 毛玻璃半透明面板 */
         .panel { 
-            background: rgba(255, 255, 255, 0.55); 
-            backdrop-filter: blur(12px); 
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.45); 
+            backdrop-filter: blur(15px); 
+            -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.6); 
             padding: 20px; 
             border-radius: 12px; 
@@ -32,8 +33,8 @@
             flex-direction: column; 
             overflow-y: auto; 
         }
-        .left-panel { flex: 1; min-width: 420px; }
-        .right-panel { flex: 2; display: flex; flex-direction: column; }
+        .left-panel { flex: 1; min-width: 420px; z-index: 1000; }
+        .right-panel { flex: 2; display: flex; flex-direction: column; position: relative; }
         
         #map { flex: 1; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.8); background: #e5e3df; min-height: 400px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
         
@@ -41,80 +42,145 @@
             width: 100%; min-height: 150px; resize: vertical; margin-bottom: 10px; padding: 12px; 
             box-sizing: border-box; font-family: monospace; 
             border: 1px solid rgba(255,255,255,0.8); border-radius: 6px; 
-            background: rgba(255,255,255,0.7); 
+            background: rgba(255,255,255,0.6); outline: none;
         }
+        textarea:focus { background: rgba(255,255,255,0.8); border-color: #009688; }
+        
         input[type="number"], input[type="text"], select { 
             padding: 8px; border: 1px solid rgba(255,255,255,0.8); border-radius: 6px; box-sizing: border-box; 
-            background: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.6); outline: none;
         }
+        input[type="number"]:focus, input[type="text"]:focus, select:focus { background: rgba(255,255,255,0.8); border-color: #009688; }
+        
         input[type="number"], input[type="text"] { width: 100%; }
         
         .row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
         .row > div { flex: 1; }
         
+        /* 半透明質感按鈕 */
         button { 
-            background-color: #4CAF50; color: white; border: none; padding: 10px 15px; 
-            cursor: pointer; border-radius: 6px; font-weight: bold; 
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 10px 15px; cursor: pointer; border-radius: 6px; font-weight: bold; 
             transition: all 0.2s ease; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0,0,0,0.15); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); border-color: rgba(255, 255, 255, 0.8); }
         button:active { transform: translateY(0); }
         
-        .btn-primary { background-color: #009688; }
-        .btn-primary:hover { background-color: #00796b; }
-        .btn-secondary { background-color: #0288d1; }
-        .btn-secondary:hover { background-color: #0277bd; }
-        .btn-danger { background-color: #e53935; }
-        .btn-danger:hover { background-color: #d32f2f; }
-        .btn-warning { background-color: #f57c00; color: #fff; }
-        .btn-warning:hover { background-color: #e65100; }
-        .btn-purple { background-color: #8e24aa; }
-        .btn-purple:hover { background-color: #7b1fa2; }
+        .btn-primary { background-color: rgba(0, 150, 136, 0.75); color: #fff; }
+        .btn-secondary { background-color: rgba(2, 136, 209, 0.75); color: #fff; }
+        .btn-danger { background-color: rgba(229, 57, 53, 0.75); color: #fff; }
+        .btn-warning { background-color: rgba(245, 124, 0, 0.8); color: #fff; }
+        .btn-purple { background-color: rgba(142, 36, 170, 0.75); color: #fff; }
         
-        /* 內層設定區塊也是半透明 */
+        /* 內層設定區塊 */
         .settings-box { 
-            border: 1px solid rgba(255, 255, 255, 0.7); 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
             padding: 15px; border-radius: 8px; 
-            background: rgba(255, 255, 255, 0.4); 
+            background: rgba(255, 255, 255, 0.35); 
             margin-bottom: 15px; 
         }
         
-        /* 資訊列質感深色半透明 */
+        /* 資訊列 */
         .info-bar { 
             display: flex; gap: 20px; 
             background: rgba(0, 96, 100, 0.85); 
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; flex-wrap: wrap; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .info-bar div { font-size: 1.1em; }
-        .info-bar span { font-weight: bold; color: #80cbc4; }
+        .info-bar div { font-size: 1.1em; flex: 1; text-align: center; }
+        .info-bar span { font-weight: bold; color: #b2ebf2; font-size: 1.2em; display: block; margin-top: 4px; }
         
         .radius-inputs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .radius-row { display: flex; align-items: center; gap: 10px; }
-        .radius-row label { width: 55px; font-weight: bold; flex-shrink: 0; color: #34495e; }
+        .radius-row label { width: 55px; font-weight: bold; flex-shrink: 0; color: #006064; }
         .radius-row input[type="number"] { width: 80px; flex-shrink: 0; }
         .radius-row select { flex: 1; }
         
-        hr { border: 0; border-top: 1px solid rgba(0, 0, 0, 0.1); margin: 15px 0; }
-        
-        h2 { color: #006064; margin-top: 0; margin-bottom: 20px; font-weight: 800; text-shadow: 1px 1px 2px rgba(255,255,255,0.5); }
+        hr { border: 0; border-top: 1px solid rgba(0, 96, 100, 0.15); margin: 15px 0; }
+        h2 { color: #006064; margin-top: 0; margin-bottom: 20px; font-weight: 800; text-shadow: 1px 1px 2px rgba(255,255,255,0.6); }
         label b { color: #00838f; }
+
+        /* ====== 地圖右下角快捷按鈕 ====== */
+        .custom-map-buttons { display: flex; flex-direction: column; gap: 10px; border: none !important; background: transparent !important; box-shadow: none !important; margin-right: 15px !important; margin-bottom: 15px !important; }
+        .custom-map-buttons button { 
+            width: 48px; height: 48px; border-radius: 50%; font-size: 1.4em;
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); 
+            border: 1px solid rgba(255,255,255,0.9);
+            display: flex; align-items: center; justify-content: center; padding: 0; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); color: #333;
+            text-shadow: none;
+        }
+        .custom-map-buttons button:hover { background: rgba(255,255,255,1); transform: scale(1.1); }
+
+        /* ====== 手機端 UI 隱藏元素 ====== */
+        #mobile-toggle-btn, #mobile-overlay { display: none; }
+
+        /* ====== 手機端響應式設計 (小於 992px) ====== */
+        @media (max-width: 992px) {
+            body { padding: 0; height: 100vh; overflow: hidden; }
+            .container { flex-direction: column; height: 100vh; gap: 0; margin: 0; }
+            
+            .right-panel { position: absolute; top: 0; left: 0; width: 100%; height: 100vh; padding: 0; background: none; border: none; z-index: 1; border-radius: 0; }
+            #map { height: 100vh; border-radius: 0; border: none; }
+            
+            .left-panel {
+                position: fixed; top: 0; left: -100%; width: 85%; max-width: 400px; height: 100vh;
+                border-radius: 0 20px 20px 0; border-left: none; border-top: none; border-bottom: none;
+                background: rgba(255, 255, 255, 0.85); 
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .left-panel.open { left: 0; }
+            
+            #mobile-toggle-btn {
+                display: block; position: fixed; top: 15px; right: 15px; z-index: 1002;
+                background-color: rgba(0, 96, 100, 0.85); color: white;
+                border-radius: 30px; padding: 10px 20px; font-size: 1em; border: 1px solid rgba(255,255,255,0.5);
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            }
+            
+            #mobile-overlay {
+                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); z-index: 999; backdrop-filter: blur(2px);
+            }
+            #mobile-overlay.open { display: block; }
+
+            .info-bar {
+                position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); width: 90%;
+                z-index: 900; margin: 0; padding: 10px 15px; /* z-index 調低避免擋住地圖控制項 */
+                display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+                border-radius: 12px; pointer-events: none; /* 讓點擊穿透 */
+            }
+            .info-bar div { font-size: 0.9em; margin: 0; text-align: center; }
+            .info-bar span { display: inline-block; margin-left: 0; font-size: 1.1em; }
+            
+            /* 手機版快捷按鈕往上挪，避免被資訊列擋住 */
+            .custom-map-buttons { margin-bottom: 130px !important; }
+        }
     </style>
 </head>
 <body>
 
+<!-- 手機版懸浮按鈕與遮罩 -->
+<button id="mobile-toggle-btn" onclick="toggleSettings()">⚙️ 設定面板</button>
+<div id="mobile-overlay" onclick="toggleSettings()"></div>
+
 <div class="container">
-    <!-- 左側控制面板 -->
-    <div class="panel left-panel">
+    <!-- 左側控制面板 (手機版為側滑抽屜) -->
+    <!-- 移除 onClick 自動收合的邏輯，只有按下遮罩或設定按鈕才會收合 -->
+    <div class="panel left-panel" id="settings-drawer">
         <h2>路徑製作器</h2>
         
         <div class="settings-box">
             <label><b>1. 座標輸入</b></label>
             <textarea id="coord-input" placeholder="貼上座標，一行一組 (緯度, 經度)&#10;例如:&#10;25.0339, 121.5645&#10;25.0478, 121.5318"></textarea>
             
-            <!-- 第一行上傳，第二行併排按鈕 -->
             <div style="margin-bottom: 10px;">
                 <input type="file" id="gpx-file" accept=".gpx" style="font-size: 0.9em;">
             </div>
@@ -138,7 +204,7 @@
             </div>
             <label>各圈半徑與繞行模式設定:</label>
             <div id="radius-container" class="radius-inputs">
-                <!-- Javascript 動態生成單行排列的輸入框與選單 -->
+                <!-- Javascript 動態生成 -->
             </div>
         </div>
 
@@ -157,7 +223,6 @@
         </div>
 
         <hr>
-        <!-- 下方按鈕併排，最佳化空間 -->
         <div class="row">
             <button class="btn-purple" onclick="optimizeRoute()" style="font-size: 1.1em; padding: 12px;">最佳化路徑</button>
             <button class="btn-primary" onclick="downloadGPX()" style="font-size: 1.1em; padding: 12px;">下載GPX檔案</button>
@@ -167,10 +232,10 @@
     <!-- 右側地圖與資訊面板 -->
     <div class="panel right-panel">
         <div class="info-bar">
-            <div>座標總數：<span id="info-count">0</span> 組</div>
-            <div>繞行總點位：<span id="info-wpt-count">0</span> 點</div>
-            <div>總里程：<span id="info-dist">0.00</span> Km</div>
-            <div>預估時間：<span id="info-time">00分00秒</span></div>
+            <div>座標總數：<br><span id="info-count">0</span></div>
+            <div>繞行點位：<br><span id="info-wpt-count">0</span></div>
+            <div>總里程：<br><span id="info-dist">0.00</span> Km</div>
+            <div>預估時間：<br><span id="info-time">00分00秒</span></div>
         </div>
         <div id="map"></div>
     </div>
@@ -185,16 +250,48 @@
     let finalWptPath = []; 
     let tempGeneratedFilename = ""; 
     let originalImportedFilename = ""; 
-    let currentBaseCoords = []; 
+    
+    let originalBaseCoords = []; // 用於記錄使用者最一開始匯入的原順序
+    let currentBaseCoords = [];  // 用於記錄當前的順序(原順序或最佳化後)
 
     window.onload = function() {
         map = L.map('map').setView([25.0339, 121.5645], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+
+        // 新增 Leaflet 自訂控制項 (右下角三個無字圖示按鈕)
+        const CustomControl = L.Control.extend({
+            options: { position: 'bottomright' },
+            onAdd: function () {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-map-buttons');
+                container.innerHTML = `
+                    <button title="畫面滿版" onclick="fitMapBounds()">🔍</button>
+                    <button title="復原原始路徑" onclick="restoreOriginalRoute()">↩️</button>
+                    <button title="最佳化路徑" onclick="optimizeRoute()">✨</button>
+                `;
+                L.DomEvent.disableClickPropagation(container);
+                return container;
+            }
+        });
+        map.addControl(new CustomControl());
+
         generateRadiusInputs();
         document.getElementById('gpx-file').addEventListener('change', handleFileUpload);
+
+        // 如果是手機版，預設打開設定抽屜
+        if (window.innerWidth <= 992) {
+            document.getElementById('settings-drawer').classList.add('open');
+            document.getElementById('mobile-overlay').classList.add('open');
+        }
     };
+
+    function toggleSettings() {
+        const drawer = document.getElementById('settings-drawer');
+        const overlay = document.getElementById('mobile-overlay');
+        drawer.classList.toggle('open');
+        overlay.classList.toggle('open');
+    }
 
     function generateRadiusInputs() {
         const container = document.getElementById('radius-container');
@@ -209,15 +306,15 @@
         for (let i = 1; i <= laps; i++) {
             const div = document.createElement('div');
             div.className = 'radius-row';
-            const rVal = oldRadii[i-1] || '33.0'; // 預設值 33
+            const rVal = oldRadii[i-1] || '33.0'; 
             const mVal = oldModes[i-1] || 'oct';
             
             div.innerHTML = `
                 <label>第 ${i} 圈:</label> 
                 <input type="number" id="radius-${i}" value="${rVal}" step="0.1" min="6" onchange="if(currentBaseCoords.length>0) drawRoute()">
                 <select id="mode-${i}" onchange="if(currentBaseCoords.length>0) drawRoute()">
-                    <option value="oct" ${mVal === 'oct' ? 'selected' : ''}>正八邊形模式</option>
-                    <option value="zig" ${mVal === 'zig' ? 'selected' : ''}>二十四邊形鋸齒模式</option>
+                    <option value="oct" ${mVal === 'oct' ? 'selected' : ''}>繞圈模式</option>
+                    <option value="zig" ${mVal === 'zig' ? 'selected' : ''}>鋸齒模式</option>
                 </select>
             `;
             container.appendChild(div);
@@ -239,6 +336,7 @@
         if (markersLayer) map.removeLayer(markersLayer);
         finalWptPath = [];
         currentBaseCoords = [];
+        originalBaseCoords = [];
         tempGeneratedFilename = "";
     }
 
@@ -291,20 +389,17 @@
         const laps = parseInt(document.getElementById('laps-input').value) || 1;
         const preview = document.getElementById('geo-preview');
         
-        preview.innerText = "🔍 正在向地圖伺服器查詢資訊，請稍候...";
+        preview.innerText = "🔍 正在查詢資訊，請稍候...";
         document.getElementById('apply-filename-btn').style.display = 'none';
 
         try {
-            // 一次請求獲取英文版的地址資料 (穩定且不易被 API 阻擋)
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${first.lat}&lon=${first.lon}&zoom=10&addressdetails=1&accept-language=en`);
             const data = await res.json();
             
             let countryCode = data.address?.country_code?.toUpperCase();
             let country = '未知國家';
-            
             if (countryCode) {
                 try {
-                    // 終極解法：使用瀏覽器內建 API 強制將國家代碼翻譯為繁體中文
                     const regionNamesInZhHant = new Intl.DisplayNames(['zh-Hant-TW'], { type: 'region' });
                     country = regionNamesInZhHant.of(countryCode);
                 } catch(e) {
@@ -314,7 +409,6 @@
             
             const city = data.address?.city || data.address?.town || data.address?.county || data.address?.state || 'UnknownCity';
 
-            // 請求時區資料
             const resTz = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${first.lat}&longitude=${first.lon}&current_weather=true&timezone=auto`);
             const dataTz = await resTz.json();
             
@@ -324,13 +418,9 @@
                 const localOffsetHours = dataTz.utc_offset_seconds / 3600;
                 const diffHours = taiwanOffsetHours - localOffsetHours;
                 
-                if (diffHours > 0) {
-                    timeDiffStr = `+${diffHours}`;
-                } else if (diffHours < 0) {
-                    timeDiffStr = `${diffHours}`; 
-                } else {
-                    timeDiffStr = "+0";
-                }
+                if (diffHours > 0) timeDiffStr = `+${diffHours}`;
+                else if (diffHours < 0) timeDiffStr = `${diffHours}`; 
+                else timeDiffStr = "+0";
             }
 
             const cleanCity = city.replace(/\s+/g, '');
@@ -367,8 +457,25 @@
             alert("請輸入有效的座標！");
             return;
         }
+        // 記錄最原始的輸入資料，用於復原功能
+        originalBaseCoords = [...coords];
         currentBaseCoords = [...coords];
         drawRoute();
+    }
+
+    function restoreOriginalRoute() {
+        if (originalBaseCoords.length === 0) {
+            alert("您還沒有載入任何座標！");
+            return;
+        }
+        currentBaseCoords = [...originalBaseCoords];
+        drawRoute();
+    }
+
+    function fitMapBounds() {
+        if (pathLayer && finalWptPath.length > 0) {
+            map.fitBounds(pathLayer.getBounds(), {padding: [30, 30]});
+        }
     }
 
     function optimizeRoute() {
@@ -538,9 +645,7 @@
         });
         markersLayer.addTo(map);
 
-        if (latlngs.length > 0) {
-            map.fitBounds(pathLayer.getBounds(), {padding: [30, 30]});
-        }
+        fitMapBounds(); // 繪製完成後自動縮放滿版
     }
 
     function recalculateTime() {
