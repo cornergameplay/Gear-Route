@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>速種路徑製作器</title>
+    <title>專業路徑製作器 (頂級質感毛玻璃版)</title>
+    <!-- 引入 Leaflet 地圖套件 CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* 淺青藍色漸層流動背景 */
@@ -169,10 +170,12 @@
 </head>
 <body>
 
+<!-- 手機版懸浮按鈕與遮罩 -->
 <button id="mobile-toggle-btn" onclick="toggleSettings()">⚙️ 設定面板</button>
 <div id="mobile-overlay" onclick="toggleSettings()"></div>
 
 <div class="container">
+    <!-- 左側控制面板 (手機版為側滑抽屜) -->
     <div class="panel left-panel" id="settings-drawer">
         <h2>路徑製作器</h2>
         
@@ -203,7 +206,8 @@
             </div>
             <label>各圈半徑與繞行模式設定:</label>
             <div id="radius-container" class="radius-inputs">
-                </div>
+                <!-- Javascript 動態生成 -->
+            </div>
         </div>
 
         <div class="settings-box">
@@ -227,6 +231,7 @@
         </div>
     </div>
 
+    <!-- 右側地圖與資訊面板 -->
     <div class="panel right-panel">
         <div class="info-bar">
             <div>座標總數：<br><span id="info-count">0</span></div>
@@ -348,11 +353,21 @@
             const text = evt.target.result;
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(text, "text/xml");
-            const points = [...xmlDoc.querySelectorAll('wpt, trkpt, rtept')];
+            
+            // 優先級過濾機制： wpt > trkpt > rtept
+            let points = [...xmlDoc.querySelectorAll('wpt')];
             if (points.length === 0) {
-                alert("在此檔案中找不到任何座標點！");
+                points = [...xmlDoc.querySelectorAll('trkpt')];
+            }
+            if (points.length === 0) {
+                points = [...xmlDoc.querySelectorAll('rtept')];
+            }
+            
+            if (points.length === 0) {
+                alert("在此檔案中找不到任何有效座標點！");
                 return;
             }
+            
             let coordString = points.map(p => `${p.getAttribute('lat')}, ${p.getAttribute('lon')}`).join('\n');
             document.getElementById('coord-input').value = coordString;
         };
@@ -454,7 +469,6 @@
             alert("請輸入有效的座標！");
             return;
         }
-        // 記錄最原始的輸入資料，用於復原功能
         originalBaseCoords = [...coords];
         currentBaseCoords = [...coords];
         drawRoute();
@@ -642,7 +656,7 @@
         });
         markersLayer.addTo(map);
 
-        fitMapBounds(); // 繪製完成後自動縮放滿版
+        fitMapBounds(); 
     }
 
     function recalculateTime() {
