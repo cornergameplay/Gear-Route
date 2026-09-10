@@ -32,7 +32,7 @@
             display: flex; 
             flex-direction: column; 
             overflow-y: auto; 
-            box-sizing: border-box; /* 確保 padding 不會撐破面板高度 */
+            box-sizing: border-box; 
         }
         .left-panel { flex: 1; min-width: 420px; z-index: 1000; }
         .right-panel { flex: 2; display: flex; flex-direction: column; position: relative; }
@@ -53,7 +53,7 @@
         }
         input[type="number"]:focus, input[type="text"]:focus, select:focus { background: rgba(255,255,255,0.8); border-color: #009688; }
         
-        input[type="number"], input[type="text"] { width: 100%; }
+        input[type="number"], input[type="text"], input[type="file"] { width: 100%; }
         
         .row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
         .row > div { flex: 1; }
@@ -85,15 +85,35 @@
             margin-bottom: 15px; 
         }
         
+        /* 檔案排序清單 */
+        .file-list { 
+            list-style: none; padding: 0; margin: 10px 0; max-height: 120px; overflow-y: auto; 
+            border: 1px solid rgba(255,255,255,0.6); border-radius: 6px; background: rgba(255,255,255,0.2);
+        }
+        .file-list li { 
+            display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; 
+            border-bottom: 1px solid rgba(255,255,255,0.5); 
+        }
+        .file-list li:last-child { border-bottom: none; }
+        .file-list li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9em; font-weight: bold; color: #006064; }
+        .file-list button { padding: 4px 8px; margin-left: 4px; font-size: 0.85em; }
+
+        /* 地圖數字標記 */
+        .custom-number-icon { background: none; border: none; }
+        .map-number-marker {
+            background-color: #e53935; color: white; border-radius: 50%;
+            width: 26px; height: 26px; line-height: 26px; text-align: center;
+            font-weight: bold; font-size: 13px; border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4); text-shadow: none;
+        }
+        
         /* 資訊列 */
         .info-bar { 
             display: flex; gap: 20px; 
             background: rgba(0, 96, 100, 0.85); 
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; flex-wrap: wrap; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2);
         }
         .info-bar div { font-size: 1.1em; flex: 1; text-align: center; }
         .info-bar span { font-weight: bold; color: #b2ebf2; font-size: 1.2em; display: block; margin-top: 4px; }
@@ -115,15 +135,14 @@
             background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); 
             border: 1px solid rgba(255,255,255,0.9);
             display: flex; align-items: center; justify-content: center; padding: 0; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); color: #333;
-            text-shadow: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); color: #333; text-shadow: none;
         }
         .custom-map-buttons button:hover { background: rgba(255,255,255,1); transform: scale(1.1); }
 
         /* ====== 手機端 UI 隱藏元素 ====== */
         #mobile-toggle-btn, #mobile-overlay { display: none; }
 
-        /* ====== 手機端響應式設計 (小於 992px) ====== */
+        /* ====== 手機端響應式設計 ====== */
         @media (max-width: 992px) {
             body { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
             .container { flex-direction: column; height: 100vh; height: 100dvh; gap: 0; margin: 0; }
@@ -137,7 +156,7 @@
                 border-radius: 0 20px 20px 0; border-left: none; border-top: none; border-bottom: none;
                 background: rgba(255, 255, 255, 0.85); 
                 transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                padding-bottom: 80px; /* 給予底部足夠的安全滑動空間 */
+                padding-bottom: 80px; 
             }
             .left-panel.open { left: 0; }
             
@@ -163,7 +182,6 @@
             .info-bar div { font-size: 0.9em; margin: 0; text-align: center; }
             .info-bar span { display: inline-block; margin-left: 0; font-size: 1.1em; }
             
-            /* 手機版快捷按鈕往上挪，避免被資訊列擋住 */
             .custom-map-buttons { margin-bottom: 130px !important; }
         }
     </style>
@@ -175,20 +193,26 @@
 <div id="mobile-overlay" onclick="toggleSettings()"></div>
 
 <div class="container">
-    <!-- 左側控制面板 (手機版為側滑抽屜) -->
+    <!-- 左側控制面板 -->
     <div class="panel left-panel" id="settings-drawer">
         <h2>路徑製作器</h2>
         
         <div class="settings-box">
-            <label><b>1. 座標輸入</b></label>
+            <label><b>1. 座標輸入與多檔合併</b></label>
+            
+            <!-- 檔案上傳與排序清單 -->
+            <div style="margin-top: 5px;">
+                <input type="file" id="gpx-file" accept=".gpx" multiple style="font-size: 0.9em;">
+            </div>
+            <ul id="file-list" class="file-list" style="display: none;">
+                <!-- 動態生成檔案清單 -->
+            </ul>
+            
             <textarea id="coord-input" placeholder="貼上座標，一行一組 (緯度, 經度)&#10;例如:&#10;25.0339, 121.5645&#10;25.0478, 121.5318"></textarea>
             
-            <div style="margin-bottom: 10px;">
-                <input type="file" id="gpx-file" accept=".gpx" style="font-size: 0.9em;">
-            </div>
             <div class="row">
                 <button class="btn-secondary" onclick="loadCoordinates()">載入座標</button>
-                <button class="btn-danger" onclick="clearAll()">清除座標</button>
+                <button class="btn-danger" onclick="clearAll()">清除全部</button>
             </div>
         </div>
 
@@ -197,7 +221,7 @@
             <div class="row" style="margin-top: 10px;">
                 <div>
                     <label>總繞圈數:</label>
-                    <input type="number" id="laps-input" value="1" min="1" max="20" onchange="generateRadiusInputs()">
+                    <input type="number" id="laps-input" value="1" min="1" max="20" onchange="checkLapsChange()">
                 </div>
                 <div>
                     <label>時速 (Km/h):</label>
@@ -249,12 +273,15 @@
     let map;
     let pathLayer = null;
     let markersLayer = null;
+    let baseMarkersGroup = null; 
+    
     let finalWptPath = []; 
     let tempGeneratedFilename = ""; 
-    let originalImportedFilename = ""; 
     
-    let originalBaseCoords = []; // 用於記錄使用者最一開始匯入的原順序
-    let currentBaseCoords = [];  // 用於記錄當前的順序(原順序或最佳化後)
+    let originalBaseCoords = []; 
+    let currentBaseCoords = [];  
+    
+    let uploadedFiles = []; 
 
     window.onload = function() {
         map = L.map('map').setView([25.0339, 121.5645], 13);
@@ -262,7 +289,6 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // 新增 Leaflet 自訂控制項 (右下角三個無字圖示按鈕)
         const CustomControl = L.Control.extend({
             options: { position: 'bottomright' },
             onAdd: function () {
@@ -279,9 +305,8 @@
         map.addControl(new CustomControl());
 
         generateRadiusInputs();
-        document.getElementById('gpx-file').addEventListener('change', handleFileUpload);
+        document.getElementById('gpx-file').addEventListener('change', handleMultipleFileUpload);
 
-        // 如果是手機版，預設打開設定抽屜
         if (window.innerWidth <= 992) {
             document.getElementById('settings-drawer').classList.add('open');
             document.getElementById('mobile-overlay').classList.add('open');
@@ -295,28 +320,111 @@
         overlay.classList.toggle('open');
     }
 
+    async function handleMultipleFileUpload(e) {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        for (let file of files) {
+            const text = await file.text();
+            uploadedFiles.push({ name: file.name, text: text });
+        }
+        renderFileList();
+        e.target.value = ''; 
+    }
+
+    function renderFileList() {
+        const list = document.getElementById('file-list');
+        list.innerHTML = '';
+        if (uploadedFiles.length > 0) {
+            list.style.display = 'block';
+            document.getElementById('filename-input').value = uploadedFiles[0].name.replace(/\.gpx$/i, '');
+        } else {
+            list.style.display = 'none';
+        }
+
+        uploadedFiles.forEach((f, i) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span title="${f.name}">${f.name}</span>
+                <div style="flex-shrink:0;">
+                    <button class="btn-secondary" title="上移" onclick="moveFile(${i}, -1)">⬆️</button>
+                    <button class="btn-secondary" title="下移" onclick="moveFile(${i}, 1)">⬇️</button>
+                    <button class="btn-danger" title="刪除" onclick="removeFile(${i})">🗑️</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function moveFile(index, dir) {
+        if (index + dir < 0 || index + dir >= uploadedFiles.length) return;
+        const temp = uploadedFiles[index];
+        uploadedFiles[index] = uploadedFiles[index + dir];
+        uploadedFiles[index + dir] = temp;
+        renderFileList();
+    }
+
+    function removeFile(index) {
+        uploadedFiles.splice(index, 1);
+        renderFileList();
+    }
+
+    // ====== 處理圈數與模式連動 ======
+    function checkLapsChange() {
+        // 如果目前是直連模式，強制鎖定為 1 圈
+        const container = document.getElementById('radius-container');
+        const firstSelect = container.querySelector('select');
+        if (firstSelect && firstSelect.value === 'line') {
+            document.getElementById('laps-input').value = 1;
+        }
+        generateRadiusInputs();
+    }
+
+    function handleModeChange() {
+        const container = document.getElementById('radius-container');
+        const firstSelect = container.querySelector('select');
+        // 只要第一圈選擇了直連模式，強制把圈數設為 1，然後重新渲染 UI
+        if (firstSelect && firstSelect.value === 'line') {
+            document.getElementById('laps-input').value = 1;
+        }
+        generateRadiusInputs();
+    }
+
     function generateRadiusInputs() {
         const container = document.getElementById('radius-container');
-        const laps = parseInt(document.getElementById('laps-input').value) || 1;
+        let laps = parseInt(document.getElementById('laps-input').value) || 1;
         
         const oldRadii = [];
         const oldModes = [];
         container.querySelectorAll('input[type="number"]').forEach(inp => oldRadii.push(inp.value));
         container.querySelectorAll('select').forEach(sel => oldModes.push(sel.value));
 
+        // 二度檢查：確保如果有舊的模式選了 line，圈數強制為 1
+        if (oldModes.length > 0 && oldModes[0] === 'line') {
+            laps = 1;
+            document.getElementById('laps-input').value = 1;
+        }
+
         container.innerHTML = '';
         for (let i = 1; i <= laps; i++) {
             const div = document.createElement('div');
             div.className = 'radius-row';
-            const rVal = oldRadii[i-1] || '33.0'; 
+            const rVal = oldRadii[i-1] || '31.0'; 
             const mVal = oldModes[i-1] || 'oct';
             
+            // 若為直連模式，半徑輸入框強制反灰並停用
+            const isLine = (mVal === 'line');
+            const disableStyle = isLine ? 'disabled style="background-color: rgba(0,0,0,0.1); cursor: not-allowed; opacity: 0.6;"' : '';
+
             div.innerHTML = `
                 <label>第 ${i} 圈:</label> 
-                <input type="number" id="radius-${i}" value="${rVal}" step="0.1" min="6" onchange="if(currentBaseCoords.length>0) drawRoute()">
-                <select id="mode-${i}" onchange="if(currentBaseCoords.length>0) drawRoute()">
+                <input type="number" id="radius-${i}" value="${rVal}" step="0.1" min="6" onchange="if(currentBaseCoords.length>0) drawRoute()" ${disableStyle}>
+                <select id="mode-${i}" onchange="handleModeChange()">
                     <option value="oct" ${mVal === 'oct' ? 'selected' : ''}>繞圈模式</option>
                     <option value="zig" ${mVal === 'zig' ? 'selected' : ''}>鋸齒模式</option>
+                    <option value="fast_zig" ${mVal === 'fast_zig' ? 'selected' : ''}>高速鋸齒</option>
+                    <option value="deep_zig" ${mVal === 'deep_zig' ? 'selected' : ''}>深度鋸齒</option>
+                    <option value="line" ${mVal === 'line' ? 'selected' : ''}>直連模式</option>
                 </select>
             `;
             container.appendChild(div);
@@ -334,44 +442,18 @@
         document.getElementById('info-wpt-count').innerText = '0';
         document.getElementById('info-dist').innerText = '0.00';
         document.getElementById('info-time').innerText = '00分00秒';
+        
+        uploadedFiles = [];
+        renderFileList();
+
         if (pathLayer) map.removeLayer(pathLayer);
         if (markersLayer) map.removeLayer(markersLayer);
+        if (baseMarkersGroup) map.removeLayer(baseMarkersGroup);
+        
         finalWptPath = [];
         currentBaseCoords = [];
         originalBaseCoords = [];
         tempGeneratedFilename = "";
-    }
-
-    function handleFileUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        originalImportedFilename = file.name.replace(/\.gpx$/i, '');
-        document.getElementById('filename-input').value = originalImportedFilename;
-
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const text = evt.target.result;
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(text, "text/xml");
-            
-            // 優先級過濾機制： wpt > trkpt > rtept
-            let points = [...xmlDoc.querySelectorAll('wpt')];
-            if (points.length === 0) {
-                points = [...xmlDoc.querySelectorAll('trkpt')];
-            }
-            if (points.length === 0) {
-                points = [...xmlDoc.querySelectorAll('rtept')];
-            }
-            
-            if (points.length === 0) {
-                alert("在此檔案中找不到任何有效座標點！");
-                return;
-            }
-            
-            let coordString = points.map(p => `${p.getAttribute('lat')}, ${p.getAttribute('lon')}`).join('\n');
-            document.getElementById('coord-input').value = coordString;
-        };
-        reader.readAsText(file);
     }
 
     function parseCoordinates() {
@@ -389,6 +471,62 @@
             }
         }
         return coords;
+    }
+
+    function loadCoordinates() {
+        if (uploadedFiles.length > 0) {
+            let allCoords = [];
+            uploadedFiles.forEach(file => {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(file.text, "text/xml");
+                
+                let points = [...xmlDoc.querySelectorAll('wpt')];
+                if (points.length === 0) points = [...xmlDoc.querySelectorAll('trkpt')];
+                if (points.length === 0) points = [...xmlDoc.querySelectorAll('rtept')];
+                
+                points.forEach(p => {
+                    allCoords.push(`${p.getAttribute('lat')}, ${p.getAttribute('lon')}`);
+                });
+            });
+            
+            if (allCoords.length === 0) {
+                alert("在合併的檔案中找不到任何有效座標點！");
+                return;
+            }
+            
+            document.getElementById('coord-input').value = allCoords.join('\n');
+            uploadedFiles = [];
+            renderFileList();
+        }
+
+        const coords = parseCoordinates();
+        if (coords.length === 0) {
+            alert("請輸入有效的座標！");
+            return;
+        }
+        
+        originalBaseCoords = [...coords];
+        currentBaseCoords = [...coords];
+        drawRoute();
+    }
+
+    function moveBasePoint(index, dir) {
+        if (index + dir < 0 || index + dir >= currentBaseCoords.length) return;
+        const temp = currentBaseCoords[index];
+        currentBaseCoords[index] = currentBaseCoords[index + dir];
+        currentBaseCoords[index + dir] = temp;
+        syncTextareaAndRedraw();
+    }
+
+    function deleteBasePoint(index) {
+        currentBaseCoords.splice(index, 1);
+        syncTextareaAndRedraw();
+    }
+
+    function syncTextareaAndRedraw() {
+        const textarea = document.getElementById('coord-input');
+        textarea.value = currentBaseCoords.map(p => `${p.lat}, ${p.lon}`).join('\n');
+        drawRoute();
     }
 
     async function analyzeFirstCoordinate() {
@@ -463,24 +601,13 @@
         return R * c;
     }
 
-    function loadCoordinates() {
-        const coords = parseCoordinates();
-        if (coords.length === 0) {
-            alert("請輸入有效的座標！");
-            return;
-        }
-        originalBaseCoords = [...coords];
-        currentBaseCoords = [...coords];
-        drawRoute();
-    }
-
     function restoreOriginalRoute() {
         if (originalBaseCoords.length === 0) {
             alert("您還沒有載入任何座標！");
             return;
         }
         currentBaseCoords = [...originalBaseCoords];
-        drawRoute();
+        syncTextareaAndRedraw();
     }
 
     function fitMapBounds() {
@@ -544,84 +671,122 @@
             }
         }
         currentBaseCoords = routeIndices.map(i => coords[i]);
-        drawRoute();
+        syncTextareaAndRedraw();
     }
 
     function drawRoute() {
-        if (currentBaseCoords.length === 0) return;
+        if (pathLayer) map.removeLayer(pathLayer);
+        if (markersLayer) map.removeLayer(markersLayer);
+        if (baseMarkersGroup) map.removeLayer(baseMarkersGroup);
+
+        if (currentBaseCoords.length === 0) {
+            document.getElementById('info-count').innerText = 0;
+            document.getElementById('info-wpt-count').innerText = 0;
+            document.getElementById('info-dist').innerText = "0.00";
+            return;
+        }
+        
         document.getElementById('info-count').innerText = currentBaseCoords.length;
 
-        const laps = parseInt(document.getElementById('laps-input').value) || 1;
-        finalWptPath = [];
-        
-        function getVertex(centerLat, centerLon, radiusMeters, angleDeg) {
-            const mPerLat = 111320; 
-            const mPerLon = 111320 * Math.cos(centerLat * Math.PI / 180);
-            const rad = angleDeg * Math.PI / 180;
-            const dx = radiusMeters * Math.sin(rad);
-            const dy = radiusMeters * Math.cos(rad);
-            return { lat: centerLat + (dy / mPerLat), lon: centerLon + (dx / mPerLon) };
-        }
-
-        let currentPos = null; 
-
-        currentBaseCoords.forEach((center) => {
-            let entryAngleDeg = 0; 
+        // --- 繪製基礎點位的編號與編輯氣泡 ---
+        baseMarkersGroup = L.layerGroup();
+        currentBaseCoords.forEach((center, idx) => {
+            const icon = L.divIcon({
+                className: 'custom-number-icon',
+                html: `<div class="map-number-marker">${idx + 1}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+                popupAnchor: [0, -14]
+            });
+            const marker = L.marker([center.lat, center.lon], { icon, zIndexOffset: 1000 }).addTo(baseMarkersGroup);
             
-            let mode1 = document.getElementById('mode-1') ? document.getElementById('mode-1').value : 'oct';
-            let r1 = document.getElementById('radius-1') ? (parseFloat(document.getElementById('radius-1').value) || 33.0) : 33.0;
+            const popupHTML = `
+                <div style="text-align:center; min-width: 120px;">
+                    <strong style="display:block; margin-bottom:10px; color:#006064; font-size:1.1em;">第 ${idx + 1} 點編輯</strong>
+                    <div style="display:flex; gap:5px; margin-bottom:5px;">
+                        <button class="btn-secondary" style="flex:1; padding:6px 0;" onclick="moveBasePoint(${idx}, -1)">⬆️前移</button>
+                        <button class="btn-secondary" style="flex:1; padding:6px 0;" onclick="moveBasePoint(${idx}, 1)">⬇️後移</button>
+                    </div>
+                    <button class="btn-danger" style="width:100%; padding:8px 0;" onclick="deleteBasePoint(${idx})">🗑️ 刪除此點</button>
+                </div>
+            `;
+            marker.bindPopup(popupHTML);
+        });
+        baseMarkersGroup.addTo(map);
 
-            if (currentPos) {
-                let minDist = Infinity;
-                let possibleAngles = [];
-                
-                if (mode1 === 'oct') {
-                    for(let i=0; i<8; i++) possibleAngles.push(i * 45);
-                } else {
-                    for(let i=0; i<24; i++) possibleAngles.push(i * 15);
-                }
+        // --- 讀取第一圈模式以判斷是否為直連模式 ---
+        const firstModeElement = document.getElementById('mode-1');
+        const isGlobalDirectLine = firstModeElement && firstModeElement.value === 'line';
+        
+        finalWptPath = [];
 
-                possibleAngles.forEach(ang => {
-                    let actualR = (mode1 === 'oct') ? (r1 / Math.cos(22.5 * Math.PI / 180)) : (r1 + 2);
-                    let v = getVertex(center.lat, center.lon, actualR, ang);
-                    let d = getDistance(currentPos.lat, currentPos.lon, v.lat, v.lon);
-                    if (d < minDist) {
-                        minDist = d;
-                        entryAngleDeg = ang;
-                    }
-                });
+        if (isGlobalDirectLine) {
+            // 直連模式：直接將基礎座標寫入 finalWptPath
+            currentBaseCoords.forEach(center => {
+                finalWptPath.push({lat: center.lat, lon: center.lon});
+            });
+        } else {
+            // 繞圈相關計算與繪製
+            const laps = parseInt(document.getElementById('laps-input').value) || 1;
+            
+            function getVertex(centerLat, centerLon, radiusMeters, angleDeg) {
+                const mPerLat = 111320; 
+                const mPerLon = 111320 * Math.cos(centerLat * Math.PI / 180);
+                const rad = angleDeg * Math.PI / 180;
+                const dx = radiusMeters * Math.sin(rad);
+                const dy = radiusMeters * Math.cos(rad);
+                return { lat: centerLat + (dy / mPerLat), lon: centerLon + (dx / mPerLon) };
             }
 
-            for (let lap = 1; lap <= laps; lap++) {
-                let mode = document.getElementById(`mode-${lap}`).value;
-                let baseR = parseFloat(document.getElementById(`radius-${lap}`).value) || 33.0;
+            let currentPos = null; 
 
-                if (mode === 'oct') {
-                    let actualR = baseR / Math.cos(22.5 * Math.PI / 180);
-                    for (let step = 0; step <= 8; step++) {
-                        let ang = entryAngleDeg + step * 45;
-                        let v = getVertex(center.lat, center.lon, actualR, ang);
-                        finalWptPath.push(v);
-                        currentPos = v;
-                    }
-                } else {
-                    let outerR = baseR + 2;
-                    let innerR = Math.max(1, baseR - 8); 
+            currentBaseCoords.forEach((center) => {
+                let entryAngleDeg = 0; 
+                
+                let mode1 = document.getElementById('mode-1') ? document.getElementById('mode-1').value : 'oct';
+                let r1 = document.getElementById('radius-1') ? (parseFloat(document.getElementById('radius-1').value) || 31.0) : 31.0;
+
+                if (currentPos) {
+                    let minDist = Infinity;
+                    let possibleAngles = [];
                     
-                    for (let step = 0; step < 24; step++) {
-                        let angOut = entryAngleDeg + step * 15;
-                        let vOut = getVertex(center.lat, center.lon, outerR, angOut);
-                        finalWptPath.push(vOut);
-                        currentPos = vOut;
-
-                        let angIn = angOut + 7.5;
-                        let vIn = getVertex(center.lat, center.lon, innerR, angIn);
-                        finalWptPath.push(vIn);
-                        currentPos = vIn;
+                    if (mode1 === 'oct') {
+                        for(let i=0; i<8; i++) possibleAngles.push(i * 45);
+                    } else if (mode1 === 'zig' || mode1 === 'deep_zig') {
+                        for(let i=0; i<24; i++) possibleAngles.push(i * 15);
+                    } else if (mode1 === 'fast_zig') {
+                        for(let i=0; i<48; i++) possibleAngles.push(i * 7.5);
                     }
 
-                    if (lap === laps) {
-                        for (let step = 0; step <= 2; step++) {
+                    possibleAngles.forEach(ang => {
+                        let actualR = (mode1 === 'oct') ? (r1 / Math.cos(22.5 * Math.PI / 180)) : 
+                                      (mode1 === 'deep_zig') ? (r1 + 4) : (r1 + 2);
+                        let v = getVertex(center.lat, center.lon, actualR, ang);
+                        let d = getDistance(currentPos.lat, currentPos.lon, v.lat, v.lon);
+                        if (d < minDist) {
+                            minDist = d;
+                            entryAngleDeg = ang;
+                        }
+                    });
+                }
+
+                for (let lap = 1; lap <= laps; lap++) {
+                    let mode = document.getElementById(`mode-${lap}`).value;
+                    let baseR = parseFloat(document.getElementById(`radius-${lap}`).value) || 31.0;
+
+                    if (mode === 'oct') {
+                        let actualR = baseR / Math.cos(22.5 * Math.PI / 180);
+                        for (let step = 0; step <= 8; step++) {
+                            let ang = entryAngleDeg + step * 45;
+                            let v = getVertex(center.lat, center.lon, actualR, ang);
+                            finalWptPath.push(v);
+                            currentPos = v;
+                        }
+                    } else if (mode === 'zig') {
+                        let outerR = baseR + 2;
+                        let innerR = Math.max(1, baseR - 8); 
+                        
+                        for (let step = 0; step < 24; step++) {
                             let angOut = entryAngleDeg + step * 15;
                             let vOut = getVertex(center.lat, center.lon, outerR, angOut);
                             finalWptPath.push(vOut);
@@ -630,29 +795,110 @@
                             let angIn = angOut + 7.5;
                             let vIn = getVertex(center.lat, center.lon, innerR, angIn);
                             finalWptPath.push(vIn);
-                            currentPos = vIn; 
+                            currentPos = vIn;
                         }
-                    } else {
-                        let angOut = entryAngleDeg;
-                        let vOut = getVertex(center.lat, center.lon, outerR, angOut);
-                        finalWptPath.push(vOut);
-                        currentPos = vOut;
+
+                        if (lap === laps) {
+                            for (let step = 0; step <= 2; step++) {
+                                let angOut = entryAngleDeg + step * 15;
+                                let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                                finalWptPath.push(vOut);
+                                currentPos = vOut;
+
+                                let angIn = angOut + 7.5;
+                                let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                                finalWptPath.push(vIn);
+                                currentPos = vIn; 
+                            }
+                        } else {
+                            let angOut = entryAngleDeg;
+                            let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                            finalWptPath.push(vOut);
+                            currentPos = vOut;
+                        }
+                    } else if (mode === 'deep_zig') {
+                        let outerR = baseR + 4;
+                        let innerR = Math.max(1, baseR - 16); 
+                        
+                        for (let step = 0; step < 24; step++) {
+                            let angOut = entryAngleDeg + step * 15;
+                            let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                            finalWptPath.push(vOut);
+                            currentPos = vOut;
+
+                            let angIn = angOut + 7.5;
+                            let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                            finalWptPath.push(vIn);
+                            currentPos = vIn;
+                        }
+
+                        if (lap === laps) {
+                            for (let step = 0; step <= 2; step++) {
+                                let angOut = entryAngleDeg + step * 15;
+                                let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                                finalWptPath.push(vOut);
+                                currentPos = vOut;
+
+                                let angIn = angOut + 7.5;
+                                let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                                finalWptPath.push(vIn);
+                                currentPos = vIn; 
+                            }
+                        } else {
+                            let angOut = entryAngleDeg;
+                            let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                            finalWptPath.push(vOut);
+                            currentPos = vOut;
+                        }
+                    } else if (mode === 'fast_zig') {
+                        let outerR = baseR + 2;
+                        let innerR = Math.max(1, baseR - 8); 
+                        
+                        for (let step = 0; step < 48; step++) {
+                            let angOut = entryAngleDeg + step * 7.5; 
+                            let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                            finalWptPath.push(vOut);
+                            currentPos = vOut;
+
+                            let angIn = angOut + 3.75; 
+                            let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                            finalWptPath.push(vIn);
+                            currentPos = vIn;
+                        }
+
+                        if (lap === laps) {
+                            for (let step = 0; step <= 5; step++) {
+                                let angOut = entryAngleDeg + step * 7.5;
+                                let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                                finalWptPath.push(vOut);
+                                currentPos = vOut;
+
+                                let angIn = angOut + 3.75;
+                                let vIn = getVertex(center.lat, center.lon, innerR, angIn);
+                                finalWptPath.push(vIn);
+                                currentPos = vIn; 
+                            }
+                        } else {
+                            let angOut = entryAngleDeg;
+                            let vOut = getVertex(center.lat, center.lon, outerR, angOut);
+                            finalWptPath.push(vOut);
+                            currentPos = vOut;
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         recalculateTime();
 
-        if (pathLayer) map.removeLayer(pathLayer);
-        if (markersLayer) map.removeLayer(markersLayer);
-
         let latlngs = finalWptPath.map(p => [p.lat, p.lon]);
-        pathLayer = L.polyline(latlngs, {color: '#e53935', weight: 1.5}).addTo(map);
+        pathLayer = L.polyline(latlngs, {color: '#e53935', weight: 2, opacity: 0.8}).addTo(map);
         
+        // 直連模式下，我們用稍微不同顏色的點位來強調
+        let dotColor = isGlobalDirectLine ? '#8e24aa' : '#0288d1';
         markersLayer = L.layerGroup();
         finalWptPath.forEach(p => {
-            L.circleMarker([p.lat, p.lon], {radius: 1.5, color: '#0288d1', fillColor: '#0288d1', fillOpacity: 1}).addTo(markersLayer);
+            L.circleMarker([p.lat, p.lon], {radius: 1.5, color: dotColor, fillColor: dotColor, fillOpacity: 0.8, weight: 1}).addTo(markersLayer);
         });
         markersLayer.addTo(map);
 
